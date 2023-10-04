@@ -1,0 +1,277 @@
+<html>
+
+<meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+
+<script src="pdfjs/build"></script>
+<script src="pdfjs/build/pdf.js"></script>
+<script src="./pdf.min.js"></script>
+
+<style>
+
+#the-canvas {
+  border: 1px solid black;
+  direction: ltr;
+  overflow-y:scroll;
+  width: 80%;
+}
+
+</style>
+
+<body>
+  <button id="create-pdf">Create PDF</button>
+
+  <div id="image1">asldflsdjfljldjfljflj</div>
+<h1>PDF.js Previous/Next example</h1>
+
+<div>
+  <button id="prev">Previous</button>
+  <button id="next">Next</button>
+  &nbsp; &nbsp;
+  <span>Page: <span id="page_num"></span> / <span id="page_count"></span></span>
+</div>
+
+<div style="width:100%;height:90%;overflow-y:scroll;text-align: center;">
+<!-- <canvas id="the-canvas"></canvas> -->
+</div>
+
+</body>
+
+
+<script type="text/javascript">
+
+// If absolute URL from the remote server is provided, configure the CORS
+// header on that server.
+var url = 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf';
+
+// Loaded via <script> tag, create shortcut to access PDF.js exports.
+//var pdfjsLib = window['pdfjs/build/pdf.js'];
+//const pdfjsLib = require('pdfjs/build/pdf.js');
+
+// The workerSrc property shall be specified.
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs/build/pdf.worker.js';
+
+var pdfDoc = null,
+    pageNum = 1,
+    pageRendering = false,
+    pageNumPending = null,
+    scale = 3.0;
+    // canvas = document.getElementById('the-canvas'),
+    // ctx = canvas.getContext('2d');
+
+/**
+ * Get page info from document, resize canvas accordingly, and render page.
+ * @param num Page number.
+ */
+function renderPage(num) {
+  pageRendering = true;
+  // Using promise to fetch the page
+  pdfDoc.getPage(num).then(function(page) {
+
+    // var newPdf = new jsPDF();
+
+    // page.getTextContent().then(function (textContent) {
+
+    //   console.log(textContent)
+    //   textContent.items.forEach(function (item) {
+    //     console.log(item.fontName,textContent.styles,textContent.styles[item.fontName])
+    //       var style = textContent.styles[item.fontName];
+    //       // var fontSize = style.fontSize; // Adjust this based on your requirements
+
+    //       // // Set font and font size
+    //       newPdf.setFont(item.fontName);
+    //       newPdf.setFontSize(fontSize);
+    //       newPdf.text(item.str,item.transform[4], item.transform[5]);
+    //   });
+    //   newPdf.save('new.pdf');
+    // })
+
+       //We'll create a canvas for each page to draw it on
+    var viewport = page.getViewport({scale: scale});
+    
+    
+    var canvas = document.createElement("canvas");
+    // canvas.id='the-canvas'
+    canvas.style.display = "block";
+    canvas.id='the-canvas'
+    const div=document.createElement('div');
+    div.textContent="adfljasdlfjldafjlkjdsljf"
+    document.body.appendChild(canvas); // Add 
+
+    canvas.appendChild(div)
+    var ctx = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    
+    //var viewport = page.getViewport({scale: canvas.width / page.getViewport({scale: 0.1}).width});
+    //var viewport = page.getViewport(canvas.width / page.getViewport(1.0).width);
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    // Render PDF page into canvas context
+    var renderContext = {
+      canvasContext: ctx,
+      viewport: viewport
+    };
+    var renderTask = page.render(renderContext);
+
+    // Wait for rendering to finish
+    renderTask.promise.then(function() {
+      pageRendering = false;
+
+      //You need to clear the existing rectangle
+      //pdfPages[num] = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      drawRectangle(10, 10, 100, 50);
+
+      if (pageNumPending !== null) {
+        // New page rendering is pending
+        renderPage(pageNumPending);
+        pageNumPending = null;
+      }
+    });
+  });
+
+  // Update page counters
+  document.getElementById('page_num').textContent = num;
+}
+
+function drawRectangle(x, y, w, h) {
+  ctx.strokeStyle = "red";
+  ctx.strokeRect(x, y, w, h);
+}
+
+/**
+ * If another page rendering in progress, waits until the rendering is
+ * finised. Otherwise, executes rendering immediately.
+ */
+function queueRenderPage(num) {
+  if (pageRendering) {
+    pageNumPending = num;
+  } else {
+    renderPage(num);
+  }
+}
+
+/**
+ * Displays previous page.
+ */
+function onPrevPage() {
+  if (pageNum <= 1) {
+    return;
+  }
+  pageNum--;
+  queueRenderPage(pageNum);
+}
+document.getElementById('prev').addEventListener('click', onPrevPage);
+
+/**
+ * Displays next page.
+ */
+function onNextPage() {
+  if (pageNum >= pdfDoc.numPages) {
+    return;
+  }
+  pageNum++;
+  queueRenderPage(pageNum);
+}
+document.getElementById('next').addEventListener('click', onNextPage);
+
+/**
+ * Asynchronously downloads PDF.
+ */
+pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+  pdfDoc = pdfDoc_;
+  document.getElementById('page_count').textContent = pdfDoc.numPages;
+
+  for (let pageNum= 1; pageNum < pdfDoc.numPages; pageNum++) {
+    renderPage(pageNum);
+  }
+});
+
+
+
+const download=document.getElementById('create-pdf')
+
+
+download.addEventListener("click", function() {
+  var canvasElements = document.querySelectorAll('#the-canvas');
+
+
+  var pdf = new jsPDF();
+  canvasElements.forEach(function(canvas, index) {
+
+    if (index > 0) {
+        pdf.addPage(); // Add a new page for each canvas except the first one
+    }
+
+  // var canvas=document.getElementById('the-canvas')
+  var context = canvas.getContext('2d');
+  context.beginPath();
+  // context.moveTo(170, 80);
+  // context.bezierCurveTo(130, 100, 130, 150, 230, 150);
+  // context.bezierCurveTo(250, 180, 320, 180, 340, 150);
+  // context.bezierCurveTo(420, 150, 420, 120, 390, 100);
+  // context.bezierCurveTo(430, 40, 370, 30, 340, 50);
+  // context.bezierCurveTo(320, 5, 250, 20, 250, 50);
+  // context.bezierCurveTo(200, 5, 150, 20, 170, 80);
+  // context.closePath();
+  // context.lineWidth = 5;
+  // context.fillStyle = '#8ED6FF';
+  // context.fill();
+  // context.strokeStyle = '#0000ff';
+  // context.stroke();
+    // only jpeg is supported by jsPDF
+    var imgData = canvas.toDataURL("image/jpeg", 1.0);
+
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    
+  })
+  pdf.save("download.pdf");
+  }, false);
+
+
+
+
+        var objImage = null;
+        var isDragging = false;
+        var offsetX, offsetY;
+
+        function init() {
+            objImage = document.getElementById("image1");
+            objImage.style.position = "absolute";
+            objImage.style.left = "0px";
+            objImage.style.top = "0px";
+
+            objImage.addEventListener("mousedown", startDragging);
+            document.addEventListener("mousemove", drag);
+            document.addEventListener("mouseup", stopDragging);
+        }
+
+        function getKeyAndMove(e) {
+            // ... your arrow key movement code (unchanged)
+        }
+
+        function startDragging(e) {
+            isDragging = true;
+            offsetX = e.clientX - objImage.getBoundingClientRect().left;
+            offsetY = e.clientY - objImage.getBoundingClientRect().top;
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+
+            var newX = e.clientX - offsetX;
+            var newY = e.clientY - offsetY;
+
+            objImage.style.left = newX + "px";
+            objImage.style.top = newY + "px";
+        }
+
+        function stopDragging() {
+            isDragging = false;
+        }
+
+        window.onload = init;
+</script>
+</html>
